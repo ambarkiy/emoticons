@@ -1,0 +1,39 @@
+{
+    "name": "BHM Emoticon Pack",
+    "default": true,
+    "authors": [
+        "Copyright 2017 Microsoft <https://microsoft.com>"
+    ],
+    "emoticons": {
+        ":bhm2019": {
+            "file": "bhm2019",
+            "alt": {
+                "en": "BHM 2019"
+            }
+        },
+        ":bhmflame": {
+            "file": "bhmflame",
+            "alt": {
+                "en": "BHM Flame"
+            }
+        },
+        ":bhmfistbump": {
+            "file": "bhmfistbump",
+            "alt": {
+                "en": "BHM Fist Bump"
+            }
+        },
+        ":bhmcontroller": {
+            "file": "bhmcontroller",
+            "alt": {
+                "en": "BHM Controller"
+            }
+        },
+        ":bhmgrg": {
+            "file": "bhmgrg",
+            "alt": {
+                "en": "BHM Game Recognizes Game"
+            }
+        }
+    }
+}
