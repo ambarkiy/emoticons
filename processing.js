@@ -4,7 +4,7 @@ const optipng = require('optipng-bin');
 const path = require('path');
 const assert = require('assert');
 const fs = require('fs');
-const lwip = require('@mcph/lwip');
+const sharp = require('sharp');
 const cp = require('child_process');
 
 // Required fields in the manifest
@@ -89,126 +89,134 @@ exports.spritesheet = (size, dir, target, callback) => {
     const columns = Math.ceil(Math.sqrt(unique));
     const rows = Math.ceil(unique / columns);
     const cached = {};
-    const sheet = lwip.create(columns * size, rows * size, (err, img) => {
-        if (err) return callback(err);
 
-        /**
-         * Adds the emoticon's image to the lwip board.
-         * @param {Number} x
-         * @param {Number} y
-         * @param {lwip} i
-         * @param {Function} callback
-         */
-        function add(file, ext, x, y, callback) {
-            lwip.open(file, ext, (err, i) => {
-                if (err) return callback(err);
-                i.resize(size, size, function (err, i) {
-                    if (err) return callback(err);
-                    img.paste(x, y, i, callback);
-                });
-            });
+    // This startingSheet is used once, it just sets up the canvas, we immediately turn it into a buffer.
+    // within the first add call.
+    const startingSheet = sharp({
+        create: {
+            width: columns * size,
+            height: rows * size,
+            channels: 4,
+            background: { r: 0, g: 0, b: 0, alpha: 0 }
         }
-
-        /**
-         * Takes an svg file, and returns a rendered png
-         * as a buffer to the callback.
-         * @param  {String} file
-         * @param {Function} callback
-         */
-        function grabSvg(file, callback) {
-            const p = cp.spawn('rsvg-convert', ['-f', 'png', file]);
-            const bufs = [];
-            let stderr = '';
-            p.stdout.on('data', data => {
-                bufs.push(data);
-            });
-
-            p.stderr.on('data', data => {
-                stderr += data;
-            });
-
-            p.on('exit', code => {
-                if (code > 0) {
-                    callback(new Error(stderr));
-                } else {
-                    callback(undefined, Buffer.concat(bufs));
-                }
-            });
-        }
-
-        /**
-         * Writes out the sprite sheet.
-         * @param  {Function} done
-         */
-        function done () {
-            const tmp = target + '.nomin';
-            say('Writing out to ' + tmp, 1);
-            img.writeFile(tmp, 'png', err => {
-                if (err) return callback(err);
-                say('Minifying...', 1);
-                cp.execFile(optipng, ['-out', target, tmp], err => {
-                    fs.unlinkSync(tmp);
-                    callback(err, manifest);
-                });
-            });
-        }
-
-        /**
-         * Recursive function to draw images to the board.
-         * @param  {Number}   idx
-         */
-        (function next (idx, ptr) {
-            if (idx >= codes.length) {
-                return done();
-            }
-
-            const x = size * (ptr % columns);
-            const y = size * Math.floor(ptr / columns);
-
-            const code = codes[idx];
-            const emoticon = manifest.emoticons[code];
-            const filename = emoticon.file;
-            const stat = getFormat(path.join(dir, filename));
-
-            if (filename in cached) {
-                say('Loading file for `' + code + '` from cache.', 1);
-                manifest.emoticons[code] = cached[filename];
-                return cb();
-            }
-
-            delete manifest.emoticons[code].file;
-            manifest.emoticons[code] = cached[filename] = {
-                x, y,
-                width: size,
-                height: size,
-                alt: manifest.emoticons[code].alt
-            };
-
-            ptr += 1;
-
-            switch (stat.fmt) {
-                case 'svg':
-                    say('Rendering ' + stat.file, 1);
-                    grabSvg(stat.file, (err, buf) => {
-                        if (err) return callback(err);
-                        say('Drawing svg ' + stat.file + ' at (' + x + ', ' + y + ')', 1);
-                        add(buf, 'png', x, y, cb);
-                    });
-                    break;
-                default:
-                    say('Drawing ' + stat.file + ' at (' + x + ', ' + y + ')', 1);
-                    add(stat.file, stat.fmt, x, y, cb);
-            }
-
-            function cb (err) {
-                if (err) {
-                    callback(err);
-                } else {
-                    next(idx + 1, ptr);
-                }
-            }
-        })(0, 0);
     });
+    // Sharp uses a pipeline style process, so for each iteration of the sheet processing
+    // we need to store and add to a buffer. Here we initialize the buffer to start with 
+    // something
+    let workingSheetBuffer;
+    /**
+     * Adds the emoticon's image to the lwip board.
+     * @param {Number} x
+     * @param {Number} y
+     * @param {Function} callback
+     */
+    function add(filePath, ext, x, y, callback) {
+        const file = sharp(filePath)
+        .resize(size, size)
+        .toBuffer()
+        .then(buffer => {
+            // Let's workout what we need to overlay
+            // If this is the first run through we'll need to use the starting sheet
+            // otherwise the working buffer is used.
+            let target;
+            if (workingSheetBuffer && workingSheetBuffer.length) {
+                target = sharp(workingSheetBuffer);
+            } else {
+                target = startingSheet;
+            }
+            // Overlay and immediately, turn it back into a buffer
+            return target.overlayWith(buffer, {
+                top: y, 
+                left: x
+            }).png().toBuffer()
+        })
+        .then((data) => {
+            // store the buffer for the next iteration
+            workingSheetBuffer = data;
+        })
+        .then(() => callback(null))
+        .catch(err => callback(err));
+    }
+
+    /**
+     * Takes an svg file, and returns a rendered png
+     * as a buffer to the callback.
+     * @param  {String} file
+     * @param {Function} callback
+     */
+    function grabSvg(file, callback) {
+        sharp(file).toBuffer(callback);
+    }
+
+    /**
+     * Writes out the sprite sheet.
+     * @param  {Function} done
+     */
+    function done () {
+        const tmp = target + '.nomin';
+        say('Writing out to ' + tmp, 1);
+        
+        sharp(workingSheetBuffer).png().toFile(tmp)
+        .then(info => {
+            say('Minifying...', 1);
+            cp.execFile(optipng, ['-out', target, tmp], err => {
+                if(err) {
+                    console.log(err);
+                }
+                fs.unlinkSync(tmp);
+                callback(err, manifest);
+            });
+        })
+        .catch(err => {
+            return callback(err);
+        });
+    }
+
+    /**
+     * Recursive function to draw images to the board.
+     * @param  {Number}   idx
+     */
+    (function next (idx, ptr) {
+        if (idx >= codes.length) {
+            return done();
+        }
+
+        const x = size * (ptr % columns);
+        const y = size * Math.floor(ptr / columns);
+
+        const code = codes[idx];
+        const emoticon = manifest.emoticons[code];
+        const filename = emoticon.file;
+        const stat = getFormat(path.join(dir, filename));
+
+        if (filename in cached) {
+            say('Loading file for `' + code + '` from cache.', 1);
+            manifest.emoticons[code] = cached[filename];
+            return cb();
+        }
+
+        delete manifest.emoticons[code].file;
+        manifest.emoticons[code] = cached[filename] = {
+            x, y,
+            width: size,
+            height: size,
+            alt: manifest.emoticons[code].alt
+        };
+
+        ptr += 1;
+
+       
+        say('Drawing ' + stat.file + ' at (' + x + ', ' + y + ')', 1);
+        add(stat.file, stat.fmt, x, y, cb);
+
+        function cb (err) {
+            if (err) {
+                callback(err);
+            } else {
+                next(idx + 1, ptr);
+            }
+        }
+    })(0, 0);
 };
 
 /**

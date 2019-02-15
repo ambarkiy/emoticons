@@ -19,9 +19,9 @@
     "prepublish": "npm run build"
   },
   "devDependencies": {
-    "@mcph/lwip": "^0.1.1",
     "minimist": "^1.1.1",
     "optipng-bin": "^3.0.2",
-    "rimraf": "^2.3.4"
+    "rimraf": "^2.3.4",
+    "sharp": "^0.21.3"
   }
 }
