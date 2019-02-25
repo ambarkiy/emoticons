@@ -1,0 +1,45 @@
+{
+    "name": "International Womens Day Emoticon Pack",
+    "default": true,
+    "authors": [
+        "Copyright 2019 Microsoft <https://microsoft.com>"
+    ],
+    "emoticons": {
+        ":getins": {
+            "file": "getins",
+            "alt": {
+                "en": "Get Inspired"
+            }
+        },
+        ":wig": {
+            "file": "wig",
+            "alt": {
+                "en": "Women in Gaming"
+            }
+        },
+        ":wiggg": {
+            "file": "wiggg",
+            "alt": {
+                "en": "WIG GG"
+            }
+        },
+        ":grlpwr": {
+            "file": "grlpwr",
+            "alt": {
+                "en": "Girl Power"
+            }
+        },
+        ":hugz": {
+            "file": "hugz",
+            "alt": {
+                "en": "Hugz"
+            }
+        },
+        ":snap": {
+            "file": "snap",
+            "alt": {
+                "en": "Snap"
+            }
+        }
+    }
+}
