@@ -1,0 +1,39 @@
+{
+    "name": "Pride Emoticon Pack",
+    "default": true,
+    "authors": [
+        "Copyright 2019 Microsoft <https://microsoft.com>"
+    ],
+    "emoticons": {
+        ":pridepeace": {
+            "file": "pridepeace",
+            "alt": {
+                "en": "Pride Peace"
+            }
+        },
+        ":pridearch": {
+            "file": "pridearch",
+            "alt": {
+                "en": "Pride Arch"
+            }
+        },
+        ":prideunicorn": {
+            "file": "prideunicorn",
+            "alt": {
+                "en": "Pride Unicorn"
+            }
+        },
+        ":pridelove": {
+            "file": "pridelove",
+            "alt": {
+                "en": "Pride Love"
+            }
+        },
+        ":pride": {
+            "file": "pride",
+            "alt": {
+                "en": "Pride"
+            }
+        }
+    }
+}
